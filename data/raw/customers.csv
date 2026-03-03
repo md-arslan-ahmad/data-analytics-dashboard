@@ -1,0 +1,23 @@
+customer_id,name,email,region,signup_date
+C001,  Aarav Sharma  ,aarav@example.com,North,2022-01-26
+C002,Priya Singh,priya@example.com,East,2022-09-08
+C003,Rahul Gupta,rahul@example.com,South,2022-05-23
+C004,Ananya Patel,ananya-no-at-sign,North,2023-11-24
+C005,Vikram Joshi,vikram@example.com,Unknown,2022-03-31
+C006,  Sneha Reddy  ,sneha@example.com,Unknown,2023-03-09
+C007,Arjun Nair,arjun@example.com,North,2022-01-31
+C008,Kavya Menon,kavya@nodot,North,2022-08-12
+C009,Rohan Verma,rohan@example.com,South,2023-06-02
+C010,Divya Iyer,divya@example.com,Unknown,2022-01-28
+C011,  Amit Kumar  ,amit@example.com,Unknown,2022-07-23
+C012,Pooja Desai,pooja@example.com,Unknown,2023-03-06
+C013,Suresh Pillai,,South,2023-04-05
+C014,Neha Chopra,neha@example.com,Unknown,2022-10-12
+C015,Karan Malhotra,karan@example.com,North,2022-06-13
+C016,  Riya Shah  ,riya@example.com,,2023-03-09
+C017,Manish Tiwari,manish@example.com,East,2022-10-12
+C018,Shreya Bose,shreya@example.com,South,2022-08-09
+C019,Aditya Pandey,aditya@example.com,East,2022-04-15
+C020,Sunita Rao,sunita@example.com,North,2023-01-25
+C001,Aarav Sharma,aarav@example.com,North,2021-06-01
+C005,Vikram Joshi,VIKRAM@Example.COM,West,2022-09-15

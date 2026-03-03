@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+    .app { max-width: 1400px; margin: 0 auto; padding: 24px 16px; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    header h1 { font-size: 1.75rem; font-weight: 700; color: #f1f5f9; }
+    header .badge { background: #3b82f6; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 24px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 24px; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+    .card h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; margin-bottom: 8px; }
+    .card .big { font-size: 2rem; font-weight: 700; color: #f1f5f9; }
+    .card .sub { font-size: 0.8rem; color: #64748b; margin-top: 4px; }
+    .section { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    .section-title { font-size: 1.1rem; font-weight: 600; color: #f1f5f9; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .section-title span { font-size: 1.3rem; }
+    canvas { max-height: 320px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th { text-align: left; padding: 10px 12px; background: #0f172a; color: #94a3b8; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .06em; }
+    td { padding: 10px 12px; border-top: 1px solid #1e3a5f22; color: #cbd5e1; }
+    tr:hover td { background: #263548; }
+    .badge-churned { background: #7f1d1d; color: #fca5a5; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+    .badge-active { background: #14532d; color: #86efac; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+    .search-box { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .search-box input { flex: 1; min-width: 200px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 8px 12px; color: #e2e8f0; font-size: 0.875rem; }
+    .search-box input:focus { outline: none; border-color: #3b82f6; }
+    .date-range { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .date-range label { font-size: 0.8rem; color: #94a3b8; }
+    .date-range input { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; color: #e2e8f0; font-size: 0.8rem; }
+    .date-range button { background: #3b82f6; border: none; border-radius: 6px; padding: 6px 14px; color: #fff; font-size: 0.8rem; cursor: pointer; }
+    .date-range button:hover { background: #2563eb; }
+    .loading { text-align: center; padding: 60px; color: #64748b; font-size: 1.1rem; }
+    .loading .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin .7s linear infinite; margin-bottom: 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { background: #450a0a; border: 1px solid #991b1b; border-radius: 8px; padding: 16px; color: #fca5a5; margin-bottom: 16px; }
+    .region-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .region-card { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 8px; padding: 14px; }
+    .region-card h3 { color: #60a5fa; font-size: 0.9rem; margin-bottom: 8px; }
+    .region-stat { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 3px 0; }
+    .region-stat .label { color: #94a3b8; }
+    .region-stat .value { color: #e2e8f0; font-weight: 500; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: #60a5fa; }
+    @media (max-width: 600px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      header h1 { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+const API = "http://localhost:8000";
+
+function useFetch(url) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    setLoading(true); setError(null);
+    fetch(url)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(d => { setData(d); setLoading(false); })
+      .catch(e => { setError(e.message); setLoading(false); });
+  }, [url]);
+  return { data, loading, error };
+}
+
+function Loading() {
+  return <div className="loading"><div className="spinner"/><div>Loading data…</div></div>;
+}
+function ErrorMsg({ msg }) {
+  return <div className="error">⚠ Failed to load data: {msg}. Make sure the backend is running (<code>uvicorn backend.main:app --port 8000</code>).</div>;
+}
+
+function fmt(n) { return n == null ? "—" : "₹" + Number(n).toLocaleString("en-IN", {maximumFractionDigits: 0}); }
+
+// ---- Revenue Chart ----
+function RevenueChart({ data }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [filtered, setFiltered] = useState(data);
+
+  useEffect(() => { setFiltered(data); }, [data]);
+
+  const applyFilter = () => {
+    let d = data;
+    if (from) d = d.filter(r => r.order_year_month >= from);
+    if (to)   d = d.filter(r => r.order_year_month <= to);
+    setFiltered(d);
+  };
+
+  useEffect(() => {
+    if (!canvasRef.current || !filtered) return;
+    if (chartRef.current) chartRef.current.destroy();
+    chartRef.current = new Chart(canvasRef.current, {
+      type: "line",
+      data: {
+        labels: filtered.map(r => r.order_year_month),
+        datasets: [{
+          label: "Revenue (₹)",
+          data: filtered.map(r => r.total_revenue),
+          borderColor: "#3b82f6",
+          backgroundColor: "rgba(59,130,246,0.12)",
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: "#3b82f6",
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { labels: { color: "#94a3b8" } } },
+        scales: {
+          x: { ticks: { color: "#64748b" }, grid: { color: "#1e3a5f44" } },
+          y: { ticks: { color: "#64748b", callback: v => "₹" + (v/1000).toFixed(0)+"k" }, grid: { color: "#1e3a5f44" } }
+        }
+      }
+    });
+    return () => chartRef.current && chartRef.current.destroy();
+  }, [filtered]);
+
+  return (
+    <div className="section">
+      <div className="section-title"><span>📈</span> Monthly Revenue Trend</div>
+      <div className="date-range" style={{marginBottom:16}}>
+        <label>From:</label>
+        <input type="month" value={from} onChange={e => setFrom(e.target.value)} />
+        <label>To:</label>
+        <input type="month" value={to} onChange={e => setTo(e.target.value)} />
+        <button onClick={applyFilter}>Apply</button>
+        <button onClick={() => { setFrom(""); setTo(""); setFiltered(data); }} style={{background:"#475569"}}>Reset</button>
+      </div>
+      <canvas ref={canvasRef} />
+    </div>
+  );
+}
+
+// ---- Category Chart ----
+function CategoryChart({ data }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (!canvasRef.current || !data) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const colors = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6"];
+    chartRef.current = new Chart(canvasRef.current, {
+      type: "bar",
+      data: {
+        labels: data.map(r => r.category || "Unknown"),
+        datasets: [{
+          label: "Revenue (₹)",
+          data: data.map(r => r.total_revenue),
+          backgroundColor: data.map((_,i) => colors[i % colors.length]),
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { labels: { color: "#94a3b8" } } },
+        scales: {
+          x: { ticks: { color: "#64748b" }, grid: { color: "#1e3a5f44" } },
+          y: { ticks: { color: "#64748b", callback: v => "₹"+(v/1000).toFixed(0)+"k" }, grid: { color: "#1e3a5f44" } }
+        }
+      }
+    });
+    return () => chartRef.current && chartRef.current.destroy();
+  }, [data]);
+  return (
+    <div className="section">
+      <div className="section-title"><span>📊</span> Category Performance</div>
+      <canvas ref={canvasRef} />
+    </div>
+  );
+}
+
+// ---- Top Customers Table ----
+function TopCustomersTable({ data }) {
+  const [search, setSearch] = useState("");
+  const [sortCol, setSortCol] = useState("total_spend");
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const sorted = [...(data || [])]
+    .filter(r => !search || (r.name || "").toLowerCase().includes(search.toLowerCase()) || (r.region || "").toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      const av = a[sortCol], bv = b[sortCol];
+      if (typeof av === "number") return sortAsc ? av - bv : bv - av;
+      return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+
+  const handleSort = col => { if (sortCol === col) setSortAsc(!sortAsc); else { setSortCol(col); setSortAsc(true); } };
+  const arrow = col => sortCol === col ? (sortAsc ? " ↑" : " ↓") : "";
+
+  return (
+    <div className="section">
+      <div className="section-title"><span>🏆</span> Top Customers</div>
+      <div className="search-box">
+        <input placeholder="Search by name or region…" value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+      <div style={{overflowX:"auto"}}>
+        <table>
+          <thead>
+            <tr>
+              <th className="sortable" onClick={() => handleSort("name")}>Name{arrow("name")}</th>
+              <th className="sortable" onClick={() => handleSort("region")}>Region{arrow("region")}</th>
+              <th className="sortable" onClick={() => handleSort("total_spend")}>Total Spend{arrow("total_spend")}</th>
+              <th>Churn Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r, i) => (
+              <tr key={i}>
+                <td>{r.name || "—"}</td>
+                <td>{r.region || "—"}</td>
+                <td>{fmt(r.total_spend)}</td>
+                <td><span className={r.churned ? "badge-churned" : "badge-active"}>{r.churned ? "Churned" : "Active"}</span></td>
+              </tr>
+            ))}
+            {sorted.length === 0 && <tr><td colSpan={4} style={{textAlign:"center",color:"#64748b",padding:"24px"}}>No results</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ---- Region Cards ----
+function RegionSummary({ data }) {
+  return (
+    <div className="section">
+      <div className="section-title"><span>🗺</span> Regional Analysis</div>
+      <div className="region-grid">
+        {(data || []).map((r, i) => (
+          <div className="region-card" key={i}>
+            <h3>{r.region || "Unknown"}</h3>
+            <div className="region-stat"><span className="label">Customers</span><span className="value">{r.customer_count}</span></div>
+            <div className="region-stat"><span className="label">Orders</span><span className="value">{r.order_count}</span></div>
+            <div className="region-stat"><span className="label">Revenue</span><span className="value">{fmt(r.total_revenue)}</span></div>
+            <div className="region-stat"><span className="label">Avg / Customer</span><span className="value">{fmt(r.avg_revenue_per_customer)}</span></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- KPI Cards ----
+function KPICards({ revenue, customers }) {
+  const totalRev = revenue ? revenue.reduce((s, r) => s + r.total_revenue, 0) : null;
+  const topSpend = customers ? customers[0]?.total_spend : null;
+  const churned = customers ? customers.filter(c => c.churned).length : null;
+  return (
+    <div className="grid">
+      <div className="card"><h2>Total Revenue</h2><div className="big">{totalRev != null ? fmt(totalRev) : "…"}</div><div className="sub">Completed orders</div></div>
+      <div className="card"><h2>Top Spender</h2><div className="big">{topSpend != null ? fmt(topSpend) : "…"}</div><div className="sub">{customers?.[0]?.name || "—"}</div></div>
+      <div className="card"><h2>Churned (Top 10)</h2><div className="big">{churned != null ? churned : "…"}</div><div className="sub">No orders in last 90 days</div></div>
+      <div className="card"><h2>Revenue Months</h2><div className="big">{revenue ? revenue.length : "…"}</div><div className="sub">Months tracked</div></div>
+    </div>
+  );
+}
+
+// ---- App ----
+function App() {
+  const rev = useFetch(`${API}/api/revenue`);
+  const cust = useFetch(`${API}/api/top-customers`);
+  const cat = useFetch(`${API}/api/categories`);
+  const reg = useFetch(`${API}/api/regions`);
+
+  const anyLoading = rev.loading || cust.loading || cat.loading || reg.loading;
+  const errors = [rev.error && "Revenue", cust.error && "Customers", cat.error && "Categories", reg.error && "Regions"].filter(Boolean);
+
+  return (
+    <div className="app">
+      <header>
+        <h1>📉 Analytics Dashboard</h1>
+        <span className="badge">Live</span>
+      </header>
+      {errors.length > 0 && <ErrorMsg msg={`${errors.join(", ")} endpoint(s) failed`} />}
+      {anyLoading
+        ? <Loading />
+        : <>
+            <KPICards revenue={rev.data} customers={cust.data} />
+            <div className="grid-2">
+              {rev.data && <RevenueChart data={rev.data} />}
+              {cat.data && <CategoryChart data={cat.data} />}
+            </div>
+            {cust.data && <TopCustomersTable data={cust.data} />}
+            {reg.data && <RegionSummary data={reg.data} />}
+          </>
+      }
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

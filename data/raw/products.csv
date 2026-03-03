@@ -1,0 +1,13 @@
+product_id,product_name,category,unit_price
+P001,Laptop,Electronics,75000
+P002,Mouse,Electronics,800
+P003,Keyboard,Electronics,2500
+P004,Desk Chair,Furniture,12000
+P005,Monitor,Electronics,18000
+P006,Notebook,Stationery,150
+P007,Pen Set,Stationery,250
+P008,Standing Desk,Furniture,25000
+P009,Headphones,Electronics,5000
+P010,Webcam,Electronics,3500
+P011,Desk Lamp,Furniture,1800
+P012,USB Hub,Electronics,1200
